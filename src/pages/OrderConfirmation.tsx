@@ -1,237 +1,179 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, Package, Truck, MapPin, Calendar } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState } from "react";
+import { useLocation, Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, Package, MapPin, Truck, Clock } from "lucide-react";
 
-interface Order {
-  id: string;
-  total_amount: number;
-  status: string;
-  shipping_address: string;
-  shipping_city: string;
-  shipping_postal_code: string;
-  shipping_country: string;
-  created_at: string;
-}
-
-interface Shipment {
-  id: string;
-  tracking_number: string;
-  carrier: string;
-  status: string;
-  current_location: string;
-  estimated_delivery: string;
-}
-
-const OrderConfirmation: React.FC = () => {
-  const { orderId } = useParams<{ orderId: string }>();
-  const { user } = useAuth();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [loading, setLoading] = useState(true);
+const OrderConfirmation = () => {
+  const location = useLocation();
+  const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
-    if (orderId && user) {
-      fetchOrderDetails();
-    }
-  }, [orderId, user]);
-
-  const fetchOrderDetails = async () => {
-    try {
-      // Fetch order details
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .eq('user_id', user?.id)
-        .single();
-
-      if (orderError) throw orderError;
-      setOrder(orderData);
-
-      // Fetch shipment details
-      const { data: shipmentData, error: shipmentError } = await supabase
-        .from('shipments')
-        .select('*')
-        .eq('order_id', orderId)
-        .single();
-
-      if (shipmentError) throw shipmentError;
-      setShipment(shipmentData);
-    } catch (error) {
-      console.error('Error fetching order details:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+    // Get order data from navigation state or create demo order
+    const orderData = location.state?.order || {
+      id: "ORD-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      total: 597,
+      items: [
+        {
+          id: "1",
+          name: "Premium Wireless Headphones",
+          price: 299,
+          quantity: 1,
+          image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500"
+        },
+        {
+          id: "2",
+          name: "Smart Fitness Watch",
+          price: 199,
+          quantity: 1,
+          image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500"
+        }
+      ],
+      shippingAddress: {
+        name: "John Doe",
+        street: "123 Main Street",
+        city: "New York",
+        state: "NY",
+        zip: "10001"
+      },
+      estimatedDelivery: "3-5 business days",
+      trackingNumber: "TRK" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      status: "confirmed"
+    };
+    setOrder(orderData);
+  }, [location.state]);
 
   if (!order) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Order not found</h2>
-          <Link to="/orders" className="text-blue-600 hover:text-blue-700">
-            View your orders
-          </Link>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
+  const trackingSteps = [
+    { status: "confirmed", label: "Order Confirmed", icon: CheckCircle, completed: true },
+    { status: "processing", label: "Processing", icon: Package, completed: false },
+    { status: "shipped", label: "Shipped", icon: Truck, completed: false },
+    { status: "delivered", label: "Delivered", icon: MapPin, completed: false }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Success Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 bg-success rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="h-8 w-8 text-success-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
-          <p className="text-gray-600">Thank you for your purchase. Your order has been received.</p>
+          <h1 className="text-3xl font-bold mb-2">Order Confirmed!</h1>
+          <p className="text-muted-foreground">Thank you for your purchase. Your order has been received.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Details */}
-          <div className="bg-white p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Details</h2>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Order Number</span>
-                <span className="font-semibold">#{order.id.slice(-8).toUpperCase()}</span>
+          <Card className="card-premium">
+            <CardHeader>
+              <CardTitle>Order Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Order Number:</span>
+                <Badge variant="secondary">{order.id}</Badge>
               </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-600">Order Date</span>
-                <span className="font-semibold">
-                  {new Date(order.created_at).toLocaleDateString()}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total:</span>
+                <span className="text-lg font-bold">${order.total}</span>
               </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Amount</span>
-                <span className="font-semibold text-blue-600">
-                  ${order.total_amount.toFixed(2)}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Tracking Number:</span>
+                <Badge>{order.trackingNumber}</Badge>
               </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  {order.status}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Estimated Delivery:</span>
+                <span>{order.estimatedDelivery}</span>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
-                Shipping Address
-              </h3>
-              <div className="text-gray-600">
-                <p>{order.shipping_address}</p>
-                <p>{order.shipping_city}, {order.shipping_postal_code}</p>
-                <p>{order.shipping_country}</p>
+          {/* Shipping Address */}
+          <Card className="card-premium">
+            <CardHeader>
+              <CardTitle>Shipping Address</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                <p className="font-medium">{order.shippingAddress.name}</p>
+                <p>{order.shippingAddress.street}</p>
+                <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}</p>
               </div>
-            </div>
-          </div>
-
-          {/* Tracking Information */}
-          {shipment && (
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Shipping Information</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Package className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Tracking Number</p>
-                    <p className="text-blue-600 font-mono">{shipment.tracking_number}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Truck className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Carrier</p>
-                    <p className="text-gray-600">{shipment.carrier}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Current Location</p>
-                    <p className="text-gray-600">{shipment.current_location}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Estimated Delivery</p>
-                    <p className="text-gray-600">
-                      {new Date(shipment.estimated_delivery).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Badge */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
-                  <span className="font-semibold text-blue-900">
-                    Status: {shipment.status.charAt(0).toUpperCase() + shipment.status.slice(1)}
-                  </span>
-                </div>
-                <p className="text-sm text-blue-700 mt-1">
-                  Your order is being processed and will be shipped soon.
-                </p>
-              </div>
-            </div>
-          )}
+            </CardContent>
+          </Card>
         </div>
 
+        {/* Order Items */}
+        <Card className="card-premium mt-8">
+          <CardHeader>
+            <CardTitle>Order Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {order.items.map((item: any) => (
+                <div key={item.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                  <img 
+                    src={item.image} 
+                    alt={item.name}
+                    className="w-16 h-16 object-cover rounded-lg"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium">{item.name}</h4>
+                    <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">${item.price}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tracking Progress */}
+        <Card className="card-premium mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Order Tracking
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {trackingSteps.map((step, index) => (
+                <div key={step.status} className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    step.completed ? 'bg-success text-success-foreground' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    <step.icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-medium ${step.completed ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {step.label}
+                    </p>
+                  </div>
+                  {step.completed && (
+                    <Badge className="bg-success text-success-foreground">Completed</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            to="/orders"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-center"
-          >
-            View All Orders
-          </Link>
-          <Link
-            to="/products"
-            className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors text-center"
-          >
-            Continue Shopping
-          </Link>
-          {shipment && (
-            <Link
-              to={`/track/${shipment.tracking_number}`}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors text-center"
-            >
-              Track Package
-            </Link>
-          )}
+        <div className="flex flex-col sm:flex-row gap-4 mt-8">
+          <Button asChild className="flex-1">
+            <Link to="/dashboard">View Order History</Link>
+          </Button>
+          <Button variant="outline" asChild className="flex-1">
+            <Link to="/products">Continue Shopping</Link>
+          </Button>
         </div>
       </div>
     </div>

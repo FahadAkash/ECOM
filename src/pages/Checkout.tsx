@@ -1,300 +1,469 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import toast from 'react-hot-toast';
-import { useAuth } from '../contexts/AuthContext';
-import { useCart } from '../contexts/CartContext';
-import { supabase } from '../lib/supabase';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  CreditCard, 
+  Truck, 
+  Shield, 
+  MapPin,
+  Phone,
+  Mail,
+  User,
+  Calendar,
+  Lock,
+  CheckCircle
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
-const schema = yup.object({
-  fullName: yup.string().required('Full name is required'),
-  email: yup.string().email('Invalid email').required('Email is required'),
-  phone: yup.string().required('Phone number is required'),
-  address: yup.string().required('Address is required'),
-  city: yup.string().required('City is required'),
-  zipCode: yup.string().required('ZIP code is required'),
-  cardNumber: yup.string().required('Card number is required'),
-  expiryDate: yup.string().required('Expiry date is required'),
-  cvv: yup.string().required('CVV is required'),
-});
-
-type FormData = yup.InferType<typeof schema>;
-
-const Checkout: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const { user, profile } = useAuth();
-  const { state, dispatch } = useCart();
+const Checkout = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      fullName: profile?.full_name || '',
-      email: profile?.email || '',
-    },
+  const [shippingInfo, setShippingInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    apartment: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: 'US'
   });
 
-  const onSubmit = async (data: FormData) => {
-    if (!user || state.items.length === 0) return;
+  const [paymentInfo, setPaymentInfo] = useState({
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+    cardName: '',
+    billingAddress: 'same'
+  });
 
-    setLoading(true);
-    try {
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          total_amount: state.total,
-          status: 'pending',
-          shipping_address: `${data.address}, ${data.city}, ${data.zipCode}`,
-        })
-        .select()
-        .single();
+  // Demo cart items
+  const cartItems = [
+    {
+      id: "1",
+      name: "Premium Wireless Headphones",
+      price: 299,
+      quantity: 1,
+      image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300"
+    },
+    {
+      id: "2",
+      name: "Smart Fitness Watch",
+      price: 199,
+      quantity: 2,
+      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300"
+    }
+  ];
 
-      if (orderError) throw orderError;
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping = 0; // Free shipping
+  const tax = subtotal * 0.08;
+  const total = subtotal + shipping + tax;
 
-      // Create order items
-      const orderItems = state.items.map(item => ({
-        order_id: order.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+  const handleShippingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentStep(2);
+  };
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
 
-      if (itemsError) throw itemsError;
+    // Simulate payment processing
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Clear cart
-      dispatch({ type: 'CLEAR_CART' });
+    toast({
+      title: "Order Placed Successfully!",
+      description: "Your order has been confirmed and will be shipped soon.",
+    });
 
-      toast.success('Order placed successfully!');
-      navigate(`/orders/${order.id}`);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to place order');
-    } finally {
-      setLoading(false);
+    // Redirect to order confirmation page
+    navigate("/order-confirmation", {
+      state: {
+        order: {
+          id: "ORD-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          total: total,
+          items: cartItems,
+          shippingAddress: shippingInfo
+        }
+      }
+    });
+    setIsProcessing(false);
+  };
+
+  const handleInputChange = (section: 'shipping' | 'payment') => 
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      if (section === 'shipping') {
+        setShippingInfo(prev => ({ ...prev, [name]: value }));
+      } else {
+        setPaymentInfo(prev => ({ ...prev, [name]: value }));
+      }
+    };
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(' ');
+    } else {
+      return v;
     }
   };
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
-
-  if (state.items.length === 0) {
-    navigate('/cart');
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-gradient-secondary border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gradient mb-2">Checkout</h1>
+          <p className="text-muted-foreground">Complete your order securely</p>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Order Form */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Shipping & Payment</h2>
-            
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    {...register('fullName')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {errors.fullName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.fullName.message}</p>
-                  )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Checkout Form */}
+          <div className="lg:col-span-2">
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    {...register('email')}
-                    type="email"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                  )}
+                <div className={`h-0.5 w-16 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
+                </div>
+                <div className={`h-0.5 w-16 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
+                  3
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  {...register('phone')}
-                  type="tel"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {errors.phone && (
-                  <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
-                )}
-              </div>
+            <Tabs value={currentStep === 1 ? "shipping" : "payment"} className="space-y-6">
+              {/* Shipping Information */}
+              {currentStep === 1 && (
+                <Card className="card-premium">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Truck className="h-5 w-5 mr-2" />
+                      Shipping Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleShippingSubmit} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">First Name</label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                              type="text"
+                              name="firstName"
+                              value={shippingInfo.firstName}
+                              onChange={handleInputChange('shipping')}
+                              className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Last Name</label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={shippingInfo.lastName}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            required
+                          />
+                        </div>
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
-                <input
-                  {...register('address')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {errors.address && (
-                  <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
-                )}
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Email</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="email"
+                            name="email"
+                            value={shippingInfo.email}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            required
+                          />
+                        </div>
+                      </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City
-                  </label>
-                  <input
-                    {...register('city')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {errors.city && (
-                    <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>
-                  )}
-                </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Phone</label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="tel"
+                            name="phone"
+                            value={shippingInfo.phone}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                          />
+                        </div>
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ZIP Code
-                  </label>
-                  <input
-                    {...register('zipCode')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {errors.zipCode && (
-                    <p className="mt-1 text-sm text-red-600">{errors.zipCode.message}</p>
-                  )}
-                </div>
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Address</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="text"
+                            name="address"
+                            value={shippingInfo.address}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            required
+                          />
+                        </div>
+                      </div>
 
-              <hr className="my-6" />
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">City</label>
+                          <input
+                            type="text"
+                            name="city"
+                            value={shippingInfo.city}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">State</label>
+                          <input
+                            type="text"
+                            name="state"
+                            value={shippingInfo.state}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">ZIP Code</label>
+                          <input
+                            type="text"
+                            name="zipCode"
+                            value={shippingInfo.zipCode}
+                            onChange={handleInputChange('shipping')}
+                            className="w-full px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            required
+                          />
+                        </div>
+                      </div>
 
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h3>
+                      <Button type="submit" variant="premium" className="w-full" size="lg">
+                        Continue to Payment
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Card Number
-                </label>
-                <input
-                  {...register('cardNumber')}
-                  placeholder="1234 5678 9012 3456"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {errors.cardNumber && (
-                  <p className="mt-1 text-sm text-red-600">{errors.cardNumber.message}</p>
-                )}
-              </div>
+              {/* Payment Information */}
+              {currentStep === 2 && (
+                <Card className="card-premium">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Payment Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Card Number</label>
+                        <div className="relative">
+                          <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="text"
+                            name="cardNumber"
+                            value={paymentInfo.cardNumber}
+                            onChange={(e) => {
+                              const formatted = formatCardNumber(e.target.value);
+                              setPaymentInfo(prev => ({ ...prev, cardNumber: formatted }));
+                            }}
+                            placeholder="1234 5678 9012 3456"
+                            className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                            maxLength={19}
+                            required
+                          />
+                        </div>
+                      </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry Date
-                  </label>
-                  <input
-                    {...register('expiryDate')}
-                    placeholder="MM/YY"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {errors.expiryDate && (
-                    <p className="mt-1 text-sm text-red-600">{errors.expiryDate.message}</p>
-                  )}
-                </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Expiry Date</label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                              type="text"
+                              name="expiryDate"
+                              value={paymentInfo.expiryDate}
+                              onChange={handleInputChange('payment')}
+                              placeholder="MM/YY"
+                              className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">CVV</label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                              type="text"
+                              name="cvv"
+                              value={paymentInfo.cvv}
+                              onChange={handleInputChange('payment')}
+                              placeholder="123"
+                              className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                              maxLength={4}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CVV
-                  </label>
-                  <input
-                    {...register('cvv')}
-                    placeholder="123"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {errors.cvv && (
-                    <p className="mt-1 text-sm text-red-600">{errors.cvv.message}</p>
-                  )}
-                </div>
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Cardholder Name</label>
+                        <input
+                          type="text"
+                          name="cardName"
+                          value={paymentInfo.cardName}
+                          onChange={handleInputChange('payment')}
+                          className="w-full px-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                          required
+                        />
+                      </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-6"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  `Place Order - $${state.total.toFixed(2)}`
-                )}
-              </button>
-            </form>
+                      <div className="flex items-center justify-between pt-4">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setCurrentStep(1)}
+                        >
+                          Back to Shipping
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          variant="premium" 
+                          disabled={isProcessing}
+                          className="min-w-[140px]"
+                        >
+                          {isProcessing ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                          ) : (
+                            <Lock className="h-4 w-4 mr-2" />
+                          )}
+                          {isProcessing ? "Processing..." : "Place Order"}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+            </Tabs>
           </div>
 
           {/* Order Summary */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
-            
-            <div className="space-y-4">
-              {state.items.map((item) => (
-                <div key={item.id} className="flex items-center space-x-4">
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded-lg"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{item.name}</h3>
-                    <p className="text-gray-600">Qty: {item.quantity}</p>
-                  </div>
-                  <p className="font-medium text-gray-900">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </p>
+          <div className="space-y-6">
+            <Card className="card-hero">
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Items */}
+                <div className="space-y-3">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="flex items-center space-x-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-12 h-12 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{item.name}</div>
+                        <div className="text-muted-foreground text-xs">
+                          Qty: {item.quantity}
+                        </div>
+                      </div>
+                      <div className="font-semibold">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <hr className="my-6" />
+                <div className="border-t border-border pt-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shipping</span>
+                    <span className="text-success">Free</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax</span>
+                    <span>${tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
+                    <span>Total</span>
+                    <span>${total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Subtotal:</span>
-                <span className="font-medium">${state.total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Shipping:</span>
-                <span className="font-medium">Free</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tax:</span>
-                <span className="font-medium">${(state.total * 0.08).toFixed(2)}</span>
-              </div>
-              <hr className="my-2" />
-              <div className="flex justify-between text-lg font-semibold">
-                <span>Total:</span>
-                <span className="text-blue-600">${(state.total * 1.08).toFixed(2)}</span>
-              </div>
-            </div>
+            {/* Security Info */}
+            <Card className="card-premium">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <div className="text-sm">
+                    <div className="font-medium">Secure Checkout</div>
+                    <div className="text-muted-foreground">SSL encrypted payment</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Lock className="h-5 w-5 text-primary" />
+                  <div className="text-sm">
+                    <div className="font-medium">Data Protection</div>
+                    <div className="text-muted-foreground">Your info is safe with us</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
