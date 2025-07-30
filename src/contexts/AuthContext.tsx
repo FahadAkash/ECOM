@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthContextType } from '../types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, AuthContextType, RegisterData } from '../types';
+import { db } from '../lib/database';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -12,66 +13,98 @@ export const useAuth = () => {
 };
 
 interface AuthProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
+    const savedUser = localStorage.getItem('deshideal_currentUser');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const foundUser = users.find((u: User & { password: string }) => 
-      u.email === email && u.password === password
-    );
-
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-      return true;
+    try {
+      const foundUser = await db.getUserByEmail(email);
+      if (foundUser && foundUser.password === password) {
+        const userWithoutPassword = { ...foundUser };
+        delete userWithoutPassword.password;
+        setUser(userWithoutPassword);
+        localStorage.setItem('deshideal_currentUser', JSON.stringify(userWithoutPassword));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
-  };
-
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    if (users.find((u: User) => u.email === email)) {
-      return false; // User already exists
-    }
-
-    const newUser: User & { password: string } = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password,
-      isAdmin: email === 'admin@shop.com', // Make admin@shop.com an admin
-      createdAt: new Date().toISOString(),
-    };
-
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-
-    const { password: _, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-    return true;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem('deshideal_currentUser');
+  };
+
+  const register = async (userData: RegisterData): Promise<boolean> => {
+    try {
+      const existingUser = await db.getUserByEmail(userData.email);
+      if (existingUser) {
+        return false; // User already exists
+      }
+
+      const existingUsername = await db.getUserByUsername(userData.username);
+      if (existingUsername) {
+        return false; // Username already taken
+      }
+
+      const newUser = await db.createUser({
+        ...userData,
+        role: 'user'
+      });
+
+      const userWithoutPassword = { ...newUser };
+      delete userWithoutPassword.password;
+      setUser(userWithoutPassword);
+      localStorage.setItem('deshideal_currentUser', JSON.stringify(userWithoutPassword));
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
+      return false;
+    }
+  };
+
+  const updateProfile = async (updates: Partial<User>): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const updatedUser = await db.updateUser(user.id, updates);
+      if (updatedUser) {
+        const userWithoutPassword = { ...updatedUser };
+        delete userWithoutPassword.password;
+        setUser(userWithoutPassword);
+        localStorage.setItem('deshideal_currentUser', JSON.stringify(userWithoutPassword));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return false;
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    login,
+    logout,
+    register,
+    updateProfile
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

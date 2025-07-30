@@ -1,8 +1,12 @@
 export interface User {
   id: string;
-  name: string;
   email: string;
-  isAdmin: boolean;
+  password?: string;
+  name: string;
+  username: string;
+  mobile: string;
+  address?: string;
+  role: 'admin' | 'user';
   createdAt: string;
 }
 
@@ -18,41 +22,56 @@ export interface Product {
 }
 
 export interface CartItem {
-  product: Product;
+  id: string;
+  productId: string;
   quantity: number;
+  product: Product;
 }
 
 export interface Order {
   id: string;
   userId: string;
-  items: CartItem[];
+  items: OrderItem[];
   total: number;
-  status: 'pending' | 'approved' | 'shipped' | 'delivered' | 'cancelled';
-  shippingInfo: {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-    city: string;
-    zipCode: string;
-  };
+  status: 'pending' | 'approved' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  shippingAddress: string;
   trackingNumber?: string;
+  trackingStatus?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  quantity: number;
+  price: number;
+  product: Product;
 }
 
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  register: (userData: RegisterData) => Promise<boolean>;
+  updateProfile: (updates: Partial<User>) => Promise<boolean>;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  name: string;
+  username: string;
+  mobile: string;
+  address?: string;
 }
 
 export interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity: number) => void;
+  addItem: (product: Product, quantity: number) => void;
+  removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
-  removeFromCart: (productId: string) => void;
   clearCart: () => void;
   total: number;
 }

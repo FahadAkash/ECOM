@@ -1,36 +1,85 @@
 import React, { useState } from 'react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
-import { useAuth } from './contexts/AuthContext';
-import Header from './components/Layout/Header';
-import AuthForm from './components/Auth/AuthForm';
-import ProductList from './components/Products/ProductList';
-import Cart from './components/Cart/Cart';
-import Checkout from './components/Checkout/Checkout';
-import OrderList from './components/Orders/OrderList';
-import AdminPanel from './components/Admin/AdminPanel';
+import { Header } from './components/Layout/Header';
+import { HomePage } from './components/Home/HomePage';
+import { AuthModal } from './components/Auth/AuthModal';
+import { CartSidebar } from './components/Cart/CartSidebar';
+import { CheckoutForm } from './components/Cart/CheckoutForm';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { UserDashboard } from './components/User/UserDashboard';
+import { Modal } from './components/ui/Modal';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState('products');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [currentView, setCurrentView] = useState<'home' | 'dashboard'>('home');
 
-  if (!user && currentView !== 'auth') {
-    setCurrentView('auth');
-  }
+  const handleCheckoutSuccess = () => {
+    setShowCheckout(false);
+    setShowCart(false);
+    alert('Order placed successfully! You can track it in your orders section.');
+  };
 
-  if (!user) {
-    return <AuthForm setCurrentView={setCurrentView} />;
-  }
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    setCurrentView('dashboard');
+  };
+
+  const handleHomeClick = () => {
+    if (user) {
+      setCurrentView(currentView === 'home' ? 'dashboard' : 'home');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header currentView={currentView} setCurrentView={setCurrentView} />
-      
-      {currentView === 'products' && <ProductList />}
-      {currentView === 'cart' && <Cart setCurrentView={setCurrentView} />}
-      {currentView === 'checkout' && <Checkout setCurrentView={setCurrentView} />}
-      {currentView === 'orders' && <OrderList />}
-      {currentView === 'admin' && user.isAdmin && <AdminPanel />}
+      <Header
+        onCartClick={() => setShowCart(true)}
+        onAuthClick={() => setShowAuthModal(true)}
+        onHomeClick={handleHomeClick}
+      />
+
+      <main>
+        {!user || currentView === 'home' ? (
+          <HomePage onAuthClick={() => setShowAuthModal(true)} />
+        ) : (
+          user.role === 'admin' ? (
+            <AdminDashboard />
+          ) : (
+            <UserDashboard />
+          )
+        )}
+      </main>
+
+      {/* Modals */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
+
+      <CartSidebar
+        isOpen={showCart}
+        onClose={() => setShowCart(false)}
+        onCheckout={() => {
+          setShowCart(false);
+          setShowCheckout(true);
+        }}
+      />
+
+      <Modal
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        title="Checkout"
+      >
+        <CheckoutForm
+          onSuccess={handleCheckoutSuccess}
+          onCancel={() => setShowCheckout(false)}
+        />
+      </Modal>
     </div>
   );
 };
