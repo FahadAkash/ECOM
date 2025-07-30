@@ -106,7 +106,7 @@ class DatabaseManager {
           name: 'Premium Wireless Headphones',
           description: 'High-quality wireless headphones with noise cancellation and premium sound quality. Perfect for music lovers and professionals.',
           price: 2999,
-          image: 'https://images.pexels.com/photos/3783471/pexels-photo-3783471.jpeg',
+          image: 'https://primebazar.com/public/uploads/all/rPb83zyZGckxypLvImDWxfAK2FV9xDLv36kputo5.webp',
           category: 'Electronics',
           stock: 50,
           createdAt: new Date().toISOString()
