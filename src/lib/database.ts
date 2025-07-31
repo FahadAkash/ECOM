@@ -105,7 +105,7 @@ class DatabaseManager {
           id: 'prod-1',
           name: 'Premium Wireless Headphones',
           description: 'High-quality wireless headphones with noise cancellation and premium sound quality. Perfect for music lovers and professionals.',
-          price: 2999,
+          price: 10,
           image: 'https://primebazar.com/public/uploads/all/rPb83zyZGckxypLvImDWxfAK2FV9xDLv36kputo5.webp',
           category: 'Electronics',
           stock: 50,
@@ -115,8 +115,8 @@ class DatabaseManager {
           id: 'prod-2',
           name: 'Smart Watch Pro',
           description: 'Advanced smartwatch with health monitoring, GPS tracking, and long battery life. Stay connected and healthy.',
-          price: 4999,
-          image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg',
+          price: 20,
+          image: 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fajkershop.com%2Fproduct%2Fnewest-t800-ultra-smartwatch-series-8-with-wireless-charging%3Fsrsltid%3DAfmBOopbDjoSeMlsHQOpjQfBNFTKdPHo1sydz1aYBR0i5_Etxgqd6uAa&psig=AOvVaw3vujPcaKgxlwcgqwVSnOSy&ust=1754021476957000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCLiEo62d5o4DFQAAAAAdAAAAABAE',
           category: 'Electronics',
           stock: 30,
           createdAt: new Date().toISOString()
@@ -126,7 +126,7 @@ class DatabaseManager {
           name: 'Designer Backpack',
           description: 'Stylish and functional backpack perfect for work, travel, or daily use. Made with premium materials.',
           price: 1299,
-          image: 'https://images.pexels.com/photos/2905238/pexels-photo-2905238.jpeg',
+          image: 'https://kroyshop.com/wp-content/uploads/2023/07/IMG-0816-600x600.jpg',
           category: 'Fashion',
           stock: 100,
           createdAt: new Date().toISOString()
@@ -136,7 +136,7 @@ class DatabaseManager {
           name: 'Smartphone Pro Max',
           description: 'Latest flagship smartphone with advanced camera system, powerful processor, and stunning display.',
           price: 89999,
-          image: 'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg',
+          image: 'https://w0.peakpx.com/wallpaper/962/500/HD-wallpaper-smartphone-bangladesh-brand-phone-symphony-technology.jpg',
           category: 'Electronics',
           stock: 25,
           createdAt: new Date().toISOString()
