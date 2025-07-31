@@ -116,7 +116,7 @@ class DatabaseManager {
           name: 'Smart Watch Pro',
           description: 'Advanced smartwatch with health monitoring, GPS tracking, and long battery life. Stay connected and healthy.',
           price: 20,
-          image: 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fajkershop.com%2Fproduct%2Fnewest-t800-ultra-smartwatch-series-8-with-wireless-charging%3Fsrsltid%3DAfmBOopbDjoSeMlsHQOpjQfBNFTKdPHo1sydz1aYBR0i5_Etxgqd6uAa&psig=AOvVaw3vujPcaKgxlwcgqwVSnOSy&ust=1754021476957000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCLiEo62d5o4DFQAAAAAdAAAAABAE',
+          image: 'https://rukminim2.flixcart.com/image/704/844/xif0q/smartwatch/w/x/y/45-new-t800-ultra-men-smartwatch-02-android-ios-syncronex-yes-original-imah3zvuashefyzv.jpeg?q=90&crop=false',
           category: 'Electronics',
           stock: 30,
           createdAt: new Date().toISOString()
@@ -146,7 +146,7 @@ class DatabaseManager {
           name: 'Casual T-Shirt',
           description: 'Comfortable cotton t-shirt perfect for everyday wear. Available in multiple colors and sizes.',
           price: 599,
-          image: 'https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg',
+          image: 'https://tanbinas.com/uslive/pfism/4616img2022_01_31_120122_63468266.webp',
           category: 'Fashion',
           stock: 200,
           createdAt: new Date().toISOString()
@@ -156,9 +156,19 @@ class DatabaseManager {
           name: 'Gaming Laptop',
           description: 'High-performance gaming laptop with dedicated graphics card and fast processor for ultimate gaming experience.',
           price: 125999,
-          image: 'https://images.pexels.com/photos/18105/pexels-photo.jpg',
+          image: 'https://i.rtings.com/assets/pages/6dRuEBex/best-gaming-laptops-20242028-medium.jpg?format=auto',
           category: 'Electronics',
           stock: 15,
+          createdAt: new Date().toISOString()
+        } ,
+        {
+          id: 'prod-7',
+          name: 'DIU BUS',
+          description: 'If anyone wants to take the DIU bus for free, they can take it — including the driver.',
+          price: 0.00,
+          image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZMWzoZHm_TC0nOOG6w_1YE87P__44FCoy6A&s',
+          category: 'Garbage',
+          stock: 75,
           createdAt: new Date().toISOString()
         }
       ];
