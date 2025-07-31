@@ -51,7 +51,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onCancel 
   const finalTotal = total + deliveryFee;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-center">Complete Your Order</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
