@@ -17,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAuthClick, onHome
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
@@ -26,7 +26,10 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAuthClick, onHome
               className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
             >
               <Package className="w-8 h-8 text-black" />
-              <h1 className="text-xl font-bold text-black">DeshiDeal</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight">
+                <span className="text-black">Deshi</span>
+                <span className="text-green-600">10</span>
+              </h1>
             </button>
             
             {user && (
@@ -40,12 +43,10 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAuthClick, onHome
             )}
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {user ? (
               <>
-                <div className="hidden sm:block text-sm text-gray-600">
-                  Welcome, <span className="font-medium">{user.name}</span>
-                </div>
+                <div className="hidden sm:block text-sm text-gray-600">Hi, <span className="font-medium">{user.name}</span></div>
                 {user.role === 'user' && (
                   <button
                     onClick={onCartClick}
@@ -74,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAuthClick, onHome
                 variant="outline"
                 size="sm"
                 onClick={onAuthClick}
-                className="flex items-center space-x-1"
+                className="flex items-center space-x-1 rounded-full"
               >
                 <User className="w-4 h-4" />
                 <span>Login</span>

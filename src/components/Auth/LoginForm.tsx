@@ -31,14 +31,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
     setLoading(false);
   };
 
-  const handleDemoLogin = async (userType: 'admin' | 'user') => {
+  const handleDemoLogin = async (userType: 'admin' | 'user' | 'rider') => {
     setLoading(true);
     setError('');
     
     const credentials = {
       admin: { email: 'admin@deshideal.com', password: 'admin123' },
-      user: { email: 'user@deshideal.com', password: 'user123' }
-    };
+      user: { email: 'user@deshideal.com', password: 'user123' },
+      rider: { email: 'rider@deshideal.com', password: 'rider123' }
+    } as const;
     
     const success = await login(credentials[userType].email, credentials[userType].password);
     
@@ -127,10 +128,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
             >
               Login as User
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDemoLogin('rider')}
+              disabled={loading}
+              className="w-full"
+            >
+              Login as Rider
+            </Button>
           </div>
           <div className="text-xs text-gray-500 mt-2 space-y-1">
             <p><strong>Admin:</strong> admin@deshideal.com / admin123</p>
             <p><strong>User:</strong> user@deshideal.com / user123</p>
+            <p><strong>Rider:</strong> rider@deshideal.com / rider123</p>
           </div>
         </div>
       </form>

@@ -98,64 +98,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Hero Section */}
-      <motion.section 
-        ref={refs.hero}
-        initial="hidden"
-        animate={inView.hero ? "visible" : "hidden"}
-        className="relative bg-gradient-to-br from-gray-900 to-black text-white overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2670&auto=format&fit=crop')] bg-cover bg-center opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black" />
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-40">
-          <motion.div 
-            className="text-center max-w-3xl mx-auto"
-            variants={fadeIn}
-          >
-            <motion.h1 
-              className="text-4xl md:text-6xl font-bold mb-6 tracking-tight"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              Welcome to <span className="text-cyan-400">DeshiDeal</span>
-            </motion.h1>
-            
-            <motion.p 
-              className="text-xl md:text-2xl mb-10 text-gray-300"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            >
-              Your trusted online marketplace for authentic Bangladeshi products and international brands
-            </motion.p>
-            
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              <Button
-                onClick={onAuthClick}
-                size="lg"
-                className="bg-cyan-500 hover:bg-cyan-400 font-semibold px-8 py-4 text-lg transition-all duration-300 transform hover:-translate-y-1 shadow-lg shadow-cyan-500/20"
-              >
-                Start Shopping
-                {/* <ArrowRight className="ml-2 w-5 h-5" /> */}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-white text-white hover:bg-white hover:text-black px-8 py-4 text-lg transition-all duration-300"
-              >
-                Learn More
-              </Button>
-            </motion.div>
-          </motion.div>
-        </div>
-      </motion.section>
+      {/* Hero removed to show products immediately like Daraz */}
 
       {/* Features Section */}
       <motion.section 
@@ -170,9 +113,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
             className="text-center mb-16"
             variants={fadeIn}
           >
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose DeshiDeal?</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Deshi10?</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              We provide the best shopping experience with quality products, secure payments, and fast delivery
+              Ultra‑fast 10‑minute delivery, curated products, and cash on delivery. Made for Bangladesh.
             </p>
           </motion.div>
           
@@ -227,21 +170,21 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
         </div>
       </motion.section>
 
-      {/* Featured Products */}
+      {/* Featured Products at top */}
       <motion.section 
         ref={refs.products}
         initial="hidden"
         animate={inView.products ? "visible" : "hidden"}
         variants={staggerContainer}
-        className="py-20 bg-gray-50"
+        className="py-8 bg-gray-50"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             className="text-center mb-16"
             variants={fadeIn}
           >
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Products</h2>
-            <p className="text-gray-600">Discover our most popular items</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Flash Deals · 10‑Minute Delivery</h2>
+            <p className="text-gray-600">Shop popular items right now</p>
           </motion.div>
 
           {loading ? (
@@ -263,67 +206,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
             </div>
           )}
 
-          <motion.div 
-            className="text-center mt-16"
-            variants={fadeIn}
-          >
-            <Button
-              onClick={onAuthClick}
-              size="lg"
-              className="bg-gray-900 hover:bg-black px-8 py-4 text-lg font-medium transition-all duration-300 group"
-            >
-              View All Products
-              {/* <ShoppingBag className="ml-2 w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" /> */}
-            </Button>
-          </motion.div>
+          <div className="text-center mt-8">
+            <Button onClick={onAuthClick} className="rounded-full">Sign in to buy</Button>
+          </div>
         </div>
       </motion.section>
 
-      {/* CTA Section */}
-      <motion.section 
-        ref={refs.cta}
-        initial="hidden"
-        animate={inView.cta ? "visible" : "hidden"}
-        variants={fadeIn}
-        className="py-20 bg-gradient-to-r from-gray-900 to-black text-white"
-      >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.h2 
-            className="text-3xl md:text-4xl font-bold mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            Ready to Start Shopping?
-          </motion.h2>
-          
-          <motion.p 
-            className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            Join thousands of satisfied customers and discover amazing deals on DeshiDeal
-          </motion.p>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button
-              onClick={onAuthClick}
-              size="lg"
-              className="bg-cyan-500 hover:bg-cyan-400 font-bold px-10 py-5 text-lg shadow-lg shadow-cyan-500/30 transition-all duration-300"
-            >
-              Get Started Today
-              {/* <ArrowRight className="ml-3 w-5 h-5" /> */}
-            </Button>
-          </motion.div>
-        </div>
-      </motion.section>
+      {/* CTA removed for compact homepage */}
 
       {/* Floating Action Button */}
       <motion.div

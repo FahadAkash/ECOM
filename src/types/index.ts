@@ -6,7 +6,7 @@ export interface User {
   username: string;
   mobile: string;
   address?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'rider';
   createdAt: string;
 }
 

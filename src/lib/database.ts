@@ -67,7 +67,19 @@ class DatabaseManager {
         createdAt: new Date().toISOString()
       };
 
-      localStorage.setItem('deshideal_users', JSON.stringify([adminUser, demoUser]));
+      const riderUser: User = {
+        id: 'rider-1',
+        email: 'rider@deshideal.com',
+        password: 'rider123',
+        name: 'Delivery Rider',
+        username: 'rider',
+        mobile: '+880-5555-000000',
+        address: 'Dhaka, Bangladesh',
+        role: 'rider',
+        createdAt: new Date().toISOString()
+      };
+
+      localStorage.setItem('deshideal_users', JSON.stringify([adminUser, demoUser, riderUser]));
 
       const demoProducts: Product[] = [
         {
@@ -144,8 +156,30 @@ class DatabaseManager {
 
       localStorage.setItem('deshideal_products', JSON.stringify(demoProducts));
     }  
-  
+    // Ensure rider user exists even if DB was initialized before rider role was added
+    const existingUsers: User[] = JSON.parse(localStorage.getItem('deshideal_users') || '[]');
+    const hasRider = existingUsers.some(u => u.email === 'rider@deshideal.com');
+    if (!hasRider) {
+      const riderUser: User = {
+        id: 'rider-1',
+        email: 'rider@deshideal.com',
+        password: 'rider123',
+        name: 'Delivery Rider',
+        username: 'rider',
+        mobile: '+880-5555-000000',
+        address: 'Dhaka, Bangladesh',
+        role: 'rider',
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem('deshideal_users', JSON.stringify([...existingUsers, riderUser]));
+    }
   }
+  // User list helpers
+  async getUsersByRole(role: User['role']): Promise<User[]> {
+    const users = JSON.parse(localStorage.getItem('deshideal_users') || '[]');
+    return users.filter((u: User) => u.role === role);
+  }
+
 
   // Simple pub/sub for order realtime updates
   private orderSubscribers: Map<string, Set<(order: Order) => void>> = new Map();
@@ -353,6 +387,29 @@ class DatabaseManager {
 
     // Start movement simulator
     this.startMovementSimulation(updated);
+    return updated;
+  }
+
+  async assignRider(orderId: string, rider: Rider): Promise<Order | null> {
+    const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
+    const index = orders.findIndex((order: Order) => order.id === orderId);
+    if (index === -1) return null;
+    orders[index].rider = rider;
+    localStorage.setItem('deshideal_orders', JSON.stringify(orders));
+    const updated: Order = orders[index];
+    this.notifyOrder(orderId, updated);
+    return updated;
+  }
+
+  async updateOrderLocation(orderId: string, lat: number, lng: number): Promise<Order | null> {
+    const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
+    const index = orders.findIndex((order: Order) => order.id === orderId);
+    if (index === -1) return null;
+    orders[index].currentLocation = { lat, lng, updatedAt: new Date().toISOString() };
+    orders[index].updatedAt = new Date().toISOString();
+    localStorage.setItem('deshideal_orders', JSON.stringify(orders));
+    const updated: Order = orders[index];
+    this.notifyOrder(orderId, updated);
     return updated;
   }
 

@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Package, Truck, CheckCircle, Clock, MapPin, Bike } from 'lucide-react';
 import { Order } from '../../types';
 import { db } from '../../lib/database';
-import { MapContainer, TileLayer, Polyline, Circle, Tooltip } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import MapView from '../Map/MapView';
 
 interface OrderTrackingProps {
   order: Order;
@@ -50,11 +49,7 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({ order }) => {
   }, [liveOrder.promisedDeliveryAt, liveOrder.updatedAt]);
 
   const showLiveMap = liveOrder.status === 'out_for_delivery' || (liveOrder.currentLocation && liveOrder.status !== 'delivered');
-  const centerLatLng: [number, number] | null = liveOrder.currentLocation
-    ? [liveOrder.currentLocation.lat, liveOrder.currentLocation.lng]
-    : liveOrder.storeLocation
-      ? [liveOrder.storeLocation.lat, liveOrder.storeLocation.lng]
-      : null;
+  const center = liveOrder.currentLocation ?? liveOrder.storeLocation ?? null;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -68,7 +63,7 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({ order }) => {
         </div>
       </div>
 
-      {showLiveMap && centerLatLng && (
+      {showLiveMap && center && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm text-gray-700">
@@ -81,27 +76,12 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({ order }) => {
             )}
           </div>
           <div className="h-72 rounded overflow-hidden border">
-            <MapContainer center={centerLatLng} zoom={14} style={{ height: '100%', width: '100%' }}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-              {liveOrder.storeLocation && (
-                <Circle center={[liveOrder.storeLocation.lat, liveOrder.storeLocation.lng]} radius={60} pathOptions={{ color: 'black' }}>
-                  <Tooltip>Store</Tooltip>
-                </Circle>
-              )}
-              {liveOrder.destinationLocation && (
-                <Circle center={[liveOrder.destinationLocation.lat, liveOrder.destinationLocation.lng]} radius={60} pathOptions={{ color: 'green' }}>
-                  <Tooltip>Destination</Tooltip>
-                </Circle>
-              )}
-              {liveOrder.currentLocation && (
-                <Circle center={[liveOrder.currentLocation.lat, liveOrder.currentLocation.lng]} radius={50} pathOptions={{ color: 'blue' }}>
-                  <Tooltip>Rider location</Tooltip>
-                </Circle>
-              )}
-              {liveOrder.storeLocation && liveOrder.destinationLocation && (
-                <Polyline positions={[[liveOrder.storeLocation.lat, liveOrder.storeLocation.lng], [liveOrder.destinationLocation.lat, liveOrder.destinationLocation.lng]]} pathOptions={{ color: 'gray', dashArray: '6 6' }} />
-              )}
-            </MapContainer>
+            <MapView
+              center={{ lat: center.lat, lng: center.lng }}
+              store={liveOrder.storeLocation ? { lat: liveOrder.storeLocation.lat, lng: liveOrder.storeLocation.lng } : undefined}
+              destination={liveOrder.destinationLocation ? { lat: liveOrder.destinationLocation.lat, lng: liveOrder.destinationLocation.lng } : undefined}
+              current={liveOrder.currentLocation ? { lat: liveOrder.currentLocation.lat, lng: liveOrder.currentLocation.lng } : undefined}
+            />
           </div>
           {liveOrder.rider && (
             <div className="mt-3 text-sm text-gray-700">

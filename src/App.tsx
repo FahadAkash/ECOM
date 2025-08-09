@@ -8,7 +8,9 @@ import { CartSidebar } from './components/Cart/CartSidebar';
 import { CheckoutForm } from './components/Cart/CheckoutForm';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { UserDashboard } from './components/User/UserDashboard';
+import { RiderDashboard } from './components/Rider/RiderDashboard';
 import { Modal } from './components/ui/Modal';
+import { ChatWidget } from './components/Chat/ChatWidget';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +50,8 @@ const AppContent: React.FC = () => {
         ) : (
           user.role === 'admin' ? (
             <AdminDashboard />
+          ) : user.role === 'rider' ? (
+            <RiderDashboard />
           ) : (
             <UserDashboard />
           )
@@ -80,6 +84,8 @@ const AppContent: React.FC = () => {
           onCancel={() => setShowCheckout(false)}
         />
       </Modal>
+
+      <ChatWidget />
     </div>
   );
 };
