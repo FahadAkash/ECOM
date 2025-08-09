@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Truck, Shield, Star, Package, Users, Award } from 'lucide-react';
+import { ShoppingBag, Truck, Shield, Star, Package, Users, Award, Search } from 'lucide-react';
 import { Product } from '../../types';
 import { db } from '../../lib/database';
 import { ProductCard } from '../Products/ProductCard';
@@ -41,6 +41,7 @@ const scaleUp = {
 export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
   const refs = {
     hero: useRef(null),
     features: useRef(null),
@@ -100,75 +101,20 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
     <div className="min-h-screen bg-gray-50 font-sans">
       {/* Hero removed to show products immediately like Daraz */}
 
-      {/* Features Section */}
-      <motion.section 
-        ref={refs.features}
-        initial="hidden"
-        animate={inView.features ? "visible" : "hidden"}
-        variants={staggerContainer}
-        className="py-20 bg-white"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center mb-16"
-            variants={fadeIn}
-          >
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Deshi10?</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Ultra‑fast 10‑minute delivery, curated products, and cash on delivery. Made for Bangladesh.
-            </p>
-          </motion.div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <motion.div
-                  key={index}
-                  variants={scaleUp}
-                  className="group text-center p-8 rounded-xl border border-gray-200 hover:border-cyan-400 transition-all duration-300 hover:shadow-xl"
-                >
-                  <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-cyan-500 transition-colors duration-300">
-                    <Icon className="w-10 h-10 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-3 text-gray-900">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
-                </motion.div>
-              );
-            })}
+      {/* Search bar */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search in Deshi10"
+              className="w-full border rounded-full pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+            />
           </div>
         </div>
-      </motion.section>
-
-      {/* Stats Section */}
-      <motion.section 
-        ref={refs.stats}
-        initial="hidden"
-        animate={inView.stats ? "visible" : "hidden"}
-        variants={staggerContainer}
-        className="py-20 bg-gray-900 text-white"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {stats.map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div 
-                  key={index} 
-                  className="text-center"
-                  variants={fadeIn}
-                >
-                  <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center mx-auto mb-6">
-                    <Icon className="w-12 h-12 text-cyan-400" />
-                  </div>
-                  <div className="text-5xl font-bold mb-2 text-cyan-400">{stat.value}</div>
-                  <div className="text-gray-300 text-lg">{stat.label}</div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </motion.section>
+      </div>
 
       {/* Featured Products at top */}
       <motion.section 
@@ -192,12 +138,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
               <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-cyan-500"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredProducts.map((product) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {featuredProducts
+                .filter(p => !query || p.name.toLowerCase().includes(query.toLowerCase()))
+                .map((product) => (
                 <motion.div 
                   key={product.id} 
                   variants={scaleUp}
-                  className="overflow-hidden rounded-xl bg-white shadow-md hover:shadow-xl transition-all duration-300"
+                  className="overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300"
                   whileHover={{ y: -10 }}
                 >
                   <ProductCard product={product} />
@@ -212,7 +160,45 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
         </div>
       </motion.section>
 
-      {/* CTA removed for compact homepage */}
+      {/* Why Choose Deshi10 moved to bottom */}
+      <motion.section 
+        ref={refs.features}
+        initial="hidden"
+        animate={inView.features ? "visible" : "hidden"}
+        variants={staggerContainer}
+        className="py-16 bg-white border-t"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-12"
+            variants={fadeIn}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Why Choose Deshi10?</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Ultra‑fast 10‑minute delivery, curated products, and cash on delivery. Made for Bangladesh.
+            </p>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <motion.div
+                  key={index}
+                  variants={scaleUp}
+                  className="group text-center p-6 rounded-xl border border-gray-200 hover:border-green-500 transition-all duration-300 hover:shadow-lg"
+                >
+                  <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-500 transition-colors duration-300">
+                    <Icon className="w-9 h-9 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 text-gray-900">{feature.title}</h3>
+                  <p className="text-gray-600 text-sm">{feature.description}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </motion.section>
 
       {/* Floating Action Button */}
       <motion.div
