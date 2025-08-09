@@ -31,12 +31,16 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onCancel 
         product: item.product
       }));
 
-      await db.createOrder({
+      const order = await db.createOrder({
         userId: user.id,
         items: orderItems,
         total,
         shippingAddress
       });
+
+      // For orders in Dhaka region, auto-approve and process quickly
+      await db.updateOrderStatus(order.id, 'approved');
+      await db.updateOrderStatus(order.id, 'processing');
 
       clearCart();
       onSuccess();

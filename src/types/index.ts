@@ -33,10 +33,15 @@ export interface Order {
   userId: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'approved' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'approved' | 'processing' | 'out_for_delivery' | 'shipped' | 'delivered' | 'cancelled';
   shippingAddress: string;
   trackingNumber?: string;
   trackingStatus?: string;
+  promisedDeliveryAt?: string;
+  rider?: Rider;
+  currentLocation?: GeoPoint & { updatedAt: string };
+  storeLocation?: GeoPoint;
+  destinationLocation?: GeoPoint;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,4 +79,15 @@ export interface CartContextType {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   total: number;
+}
+
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface Rider {
+  id: string;
+  name: string;
+  phone: string;
 }

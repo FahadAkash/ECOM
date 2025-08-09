@@ -1,47 +1,16 @@
-export interface User {
-  id: string;
-  email: string;
-  password: string;
-  name: string;
-  username: string;
-  mobile: string;
-  address?: string;
-  role: 'admin' | 'user';
-  createdAt: string;
-}
+import { Product, User, Order, OrderItem, Rider, GeoPoint } from '../types';
 
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  category: string;
-  stock: number;
-  createdAt: string;
-}
-
-export interface Order {
-  id: string;
+type CreateOrderInput = {
   userId: string;
-  items: OrderItem[];
+  items: Array<{
+    productId: string;
+    quantity: number;
+    price: number;
+    product: Product;
+  }>;
   total: number;
-  status: 'pending' | 'approved' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   shippingAddress: string;
-  trackingNumber?: string;
-  trackingStatus?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface OrderItem {
-  id: string;
-  orderId: string;
-  productId: string;
-  quantity: number;
-  price: number;
-  product: Product;
-}
+};
 
 class DatabaseManager {
   private static instance: DatabaseManager;
@@ -174,7 +143,29 @@ class DatabaseManager {
       ];
 
       localStorage.setItem('deshideal_products', JSON.stringify(demoProducts));
+    }  
+  
+  }
+
+  // Simple pub/sub for order realtime updates
+  private orderSubscribers: Map<string, Set<(order: Order) => void>> = new Map();
+  private movementTimers: Map<string, number> = new Map();
+
+  private notifyOrder(orderId: string, order: Order) {
+    const subs = this.orderSubscribers.get(orderId);
+    subs?.forEach((cb) => cb(order));
+  }
+
+  subscribeToOrder(orderId: string, callback: (order: Order) => void): () => void {
+    if (!this.orderSubscribers.has(orderId)) {
+      this.orderSubscribers.set(orderId, new Set());
     }
+    this.orderSubscribers.get(orderId)!.add(callback);
+    // Immediately emit current
+    this.getOrderById(orderId).then((ord) => ord && callback(ord));
+    return () => {
+      this.orderSubscribers.get(orderId)?.delete(callback);
+    };
   }
 
   // User operations
@@ -251,19 +242,37 @@ class DatabaseManager {
     return true;
   }
 
-  // Order operations
-  async createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>): Promise<Order> {
+  async createOrder(orderData: CreateOrderInput): Promise<Order> {
     const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
+    const orderId = `order-${Date.now()}`;
+    const items: OrderItem[] = orderData.items.map((it, idx) => ({
+      id: `${orderId}-item-${idx + 1}`,
+      orderId,
+      productId: it.productId,
+      quantity: it.quantity,
+      price: it.price,
+      product: it.product
+    }));
     const newOrder: Order = {
-      id: `order-${Date.now()}`,
-      ...orderData,
+      id: orderId,
+      userId: orderData.userId,
+      items,
+      total: orderData.total,
+      shippingAddress: orderData.shippingAddress,
       status: 'pending',
       trackingStatus: 'Order Placed',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      updatedAt: new Date().toISOString(),
+      storeLocation: this.getDefaultStoreLocation(),
+      destinationLocation: this.deriveDestinationFromAddress(orderData.shippingAddress),
+      currentLocation: undefined,
+      promisedDeliveryAt: undefined,
+      rider: undefined,
+      trackingNumber: undefined
+    } as Order;
     orders.push(newOrder);
     localStorage.setItem('deshideal_orders', JSON.stringify(orders));
+    this.notifyOrder(newOrder.id, newOrder);
     return newOrder;
   }
 
@@ -294,15 +303,18 @@ class DatabaseManager {
           'pending': 'Order Placed',
           'approved': 'Order Confirmed',
           'processing': 'Preparing for Shipment',
+          'out_for_delivery': 'Rider is on the way',
           'shipped': 'In Transit',
           'delivered': 'Delivered',
           'cancelled': 'Cancelled'
         };
-        orders[index].trackingStatus = statusMap[status];
+        orders[index].trackingStatus = (statusMap as any)[status];
       }
       
       localStorage.setItem('deshideal_orders', JSON.stringify(orders));
-      return orders[index];
+      const updated: Order = orders[index];
+      this.notifyOrder(orderId, updated);
+      return updated;
     }
     return null;
   }
@@ -310,6 +322,99 @@ class DatabaseManager {
   async getOrderById(orderId: string): Promise<Order | null> {
     const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
     return orders.find((order: Order) => order.id === orderId) || null;
+  }
+
+  async startExpressDelivery(orderId: string, rider: Rider, promisedMinutes = 10): Promise<Order | null> {
+    const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
+    const index = orders.findIndex((order: Order) => order.id === orderId);
+    if (index === -1) return null;
+
+    const now = Date.now();
+    const promisedAt = new Date(now + promisedMinutes * 60_000).toISOString();
+    const order: Order = orders[index];
+    const store = order.storeLocation ?? this.getDefaultStoreLocation();
+    const destination = order.destinationLocation ?? this.deriveDestinationFromAddress(order.shippingAddress);
+    const currentLocation = { ...store, updatedAt: new Date().toISOString() } as Order['currentLocation'];
+
+    const updated: Order = {
+      ...order,
+      status: 'out_for_delivery',
+      trackingStatus: 'Rider picked up your order',
+      promisedDeliveryAt: promisedAt,
+      rider,
+      storeLocation: store,
+      destinationLocation: destination,
+      currentLocation,
+      updatedAt: new Date().toISOString()
+    };
+    orders[index] = updated;
+    localStorage.setItem('deshideal_orders', JSON.stringify(orders));
+    this.notifyOrder(orderId, updated);
+
+    // Start movement simulator
+    this.startMovementSimulation(updated);
+    return updated;
+  }
+
+  private startMovementSimulation(order: Order) {
+    // Clear existing timer
+    const existing = this.movementTimers.get(order.id);
+    if (existing) {
+      clearInterval(existing);
+    }
+
+    if (!order.destinationLocation || !order.storeLocation || !order.promisedDeliveryAt) return;
+    const dest = order.destinationLocation;
+    const start = order.currentLocation ?? { ...order.storeLocation, updatedAt: new Date().toISOString() };
+    const startTime = Date.now();
+    const endTime = new Date(order.promisedDeliveryAt).getTime();
+    const totalMs = Math.max(endTime - startTime, 1);
+
+    const interval = window.setInterval(async () => {
+      const now = Date.now();
+      const progress = Math.min((now - startTime) / totalMs, 1);
+      const lat = start.lat + (dest.lat - start.lat) * progress;
+      const lng = start.lng + (dest.lng - start.lng) * progress;
+
+      const stored = await this.getOrderById(order.id);
+      if (!stored) {
+        clearInterval(interval);
+        this.movementTimers.delete(order.id);
+        return;
+      }
+
+      if (progress >= 1) {
+        await this.updateOrderStatus(order.id, 'delivered', stored.trackingNumber, 'Delivered within 10 minutes');
+        clearInterval(interval);
+        this.movementTimers.delete(order.id);
+        return;
+      }
+
+      const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
+      const idx = orders.findIndex((o: Order) => o.id === order.id);
+      if (idx !== -1) {
+        orders[idx].currentLocation = { lat, lng, updatedAt: new Date().toISOString() };
+        orders[idx].updatedAt = new Date().toISOString();
+        localStorage.setItem('deshideal_orders', JSON.stringify(orders));
+        this.notifyOrder(order.id, orders[idx]);
+      }
+    }, 3000);
+
+    this.movementTimers.set(order.id, interval);
+  }
+
+  private getDefaultStoreLocation(): GeoPoint {
+    // Dhaka central store fallback
+    return { lat: 23.7808875, lng: 90.2792371 };
+  }
+
+  private deriveDestinationFromAddress(_address: string): GeoPoint {
+    // Simple stub: randomize within ~3km of store to simulate different destinations
+    const base = this.getDefaultStoreLocation();
+    const rand = (min: number, max: number) => Math.random() * (max - min) + min;
+    const deltaLat = rand(-0.02, 0.02); // ~2km
+    const deltaLng = rand(-0.02, 0.02);
+    return { lat: base.lat + deltaLat, lng: base.lng + deltaLng };
   }
 }
 

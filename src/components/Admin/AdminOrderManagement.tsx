@@ -30,6 +30,9 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
         case 'processing':
           trackingStatus = 'Order is being prepared';
           break;
+        case 'out_for_delivery':
+          trackingStatus = 'Rider is on the way';
+          break;
         case 'shipped':
           trackingStatus = 'Package shipped - In transit';
           break;
@@ -233,14 +236,27 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
               )}
 
               {order.status === 'processing' && (
-                <Button
-                  size="sm"
-                  onClick={() => handleStatusUpdate(order.id, 'shipped')}
-                  disabled={!trackingNumbers[order.id]?.trim() && !order.trackingNumber}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  Mark as Shipped
-                </Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => handleStatusUpdate(order.id, 'shipped')}
+                    disabled={!trackingNumbers[order.id]?.trim() && !order.trackingNumber}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Mark as Shipped
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const rider = { id: 'rider-1', name: 'QuickRider', phone: '+8801XXXXXXXXX' };
+                      await db.startExpressDelivery(order.id, rider, 10);
+                      onOrderUpdate();
+                    }}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Start 10-min Delivery
+                  </Button>
+                </div>
               )}
 
               {order.status === 'shipped' && (

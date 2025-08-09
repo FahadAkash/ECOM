@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Clock, CheckCircle, Truck, XCircle } from 'lucide-react';
+import { Package, Clock, CheckCircle, Truck, XCircle, Bike } from 'lucide-react';
 import { Order } from '../../types';
 
 interface OrderListProps {
@@ -14,6 +14,8 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, showUserInfo = fal
         return <Clock className="w-5 h-5 text-yellow-500" />;
       case 'approved':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'out_for_delivery':
+        return <Bike className="w-5 h-5 text-blue-600" />;
       case 'shipped':
         return <Truck className="w-5 h-5 text-blue-500" />;
       case 'delivered':
@@ -31,6 +33,8 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, showUserInfo = fal
         return 'bg-yellow-100 text-yellow-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
+      case 'out_for_delivery':
+        return 'bg-blue-100 text-blue-800';
       case 'shipped':
         return 'bg-blue-100 text-blue-800';
       case 'delivered':
