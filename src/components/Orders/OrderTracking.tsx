@@ -10,12 +10,33 @@ interface OrderTrackingProps {
 
 export const OrderTracking: React.FC<OrderTrackingProps> = ({ order }) => {
   const [liveOrder, setLiveOrder] = useState<Order>(order);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   useEffect(() => {
     setLiveOrder(order);
     const unsubscribe = db.subscribeToOrder(order.id, (o) => setLiveOrder(o));
     return () => unsubscribe();
   }, [order.id]);
+
+  // Track viewer's (customer) current location for rider-to-user line
+  useEffect(() => {
+    let watchId: number | null = null;
+    if ('geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => setGeoError(err.message || 'Location unavailable'),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      );
+    } else {
+      setGeoError('Geolocation not supported');
+    }
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, []);
 
   const trackingSteps = [
     { status: 'pending', label: 'Order Placed', icon: Package, description: 'Your order has been received' },
@@ -81,8 +102,12 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({ order }) => {
               store={liveOrder.storeLocation ? { lat: liveOrder.storeLocation.lat, lng: liveOrder.storeLocation.lng } : undefined}
               destination={liveOrder.destinationLocation ? { lat: liveOrder.destinationLocation.lat, lng: liveOrder.destinationLocation.lng } : undefined}
               current={liveOrder.currentLocation ? { lat: liveOrder.currentLocation.lat, lng: liveOrder.currentLocation.lng } : undefined}
+              user={userLocation ?? undefined}
             />
           </div>
+          {geoError && (
+            <div className="text-xs text-gray-500 mt-2">{geoError}</div>
+          )}
           {liveOrder.rider && (
             <div className="mt-3 text-sm text-gray-700">
               Rider: <span className="font-medium">{liveOrder.rider.name}</span> · {liveOrder.rider.phone}

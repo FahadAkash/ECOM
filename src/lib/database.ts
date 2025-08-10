@@ -347,6 +347,14 @@ class DatabaseManager {
       
       localStorage.setItem('deshideal_orders', JSON.stringify(orders));
       const updated: Order = orders[index];
+      // Stop simulator once delivered/cancelled
+      if (status === 'delivered' || status === 'cancelled') {
+        const timerId = this.movementTimers.get(orderId);
+        if (timerId) {
+          clearInterval(timerId);
+          this.movementTimers.delete(orderId);
+        }
+      }
       this.notifyOrder(orderId, updated);
       return updated;
     }
@@ -405,6 +413,12 @@ class DatabaseManager {
     const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
     const index = orders.findIndex((order: Order) => order.id === orderId);
     if (index === -1) return null;
+    // If simulation is running, stop it to prioritize real GPS
+    const timerId = this.movementTimers.get(orderId);
+    if (timerId) {
+      clearInterval(timerId);
+      this.movementTimers.delete(orderId);
+    }
     orders[index].currentLocation = { lat, lng, updatedAt: new Date().toISOString() };
     orders[index].updatedAt = new Date().toISOString();
     localStorage.setItem('deshideal_orders', JSON.stringify(orders));
@@ -435,6 +449,13 @@ class DatabaseManager {
 
       const stored = await this.getOrderById(order.id);
       if (!stored) {
+        clearInterval(interval);
+        this.movementTimers.delete(order.id);
+        return;
+      }
+
+      // Stop early if delivered/cancelled elsewhere
+      if (stored.status === 'delivered' || stored.status === 'cancelled') {
         clearInterval(interval);
         this.movementTimers.delete(order.id);
         return;
