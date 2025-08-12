@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAuthClick, onHome
               <Package className="w-8 h-8 text-black" />
               <h1 className="text-2xl font-extrabold tracking-tight">
                 <span className="text-black">Deshi</span>
-                <span className="text-green-600">10</span>
+                <span className="text-green-600">Bazar</span>
               </h1>
             </button>
             

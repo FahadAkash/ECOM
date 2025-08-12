@@ -109,7 +109,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search in Deshi10"
+              placeholder="Search in DeshiBazar"
               className="w-full border rounded-full pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
             />
           </div>
@@ -173,7 +173,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onAuthClick }) => {
             className="text-center mb-12"
             variants={fadeIn}
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Why Choose Deshi10?</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Why Choose DeshiBazar?</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Ultra‑fast 10‑minute delivery, curated products, and cash on delivery. Made for Bangladesh.
             </p>

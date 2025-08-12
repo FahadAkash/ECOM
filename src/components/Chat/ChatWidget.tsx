@@ -8,7 +8,7 @@ interface ChatMessage {
   content: string;
 }
 
-const STORE_CONTEXT = `You are Deshi10 AI assistant for a Bangladeshi 10-minute delivery ecommerce.
+const STORE_CONTEXT = `You are DeshiBazar AI assistant for a Bangladeshi 10-minute delivery ecommerce.
 Products include electronics, fashion, gadgets, accessories. Delivery promise: 10 minutes in service zones around Dhaka.
 Key features: live order tracking with rider location, rider dashboard, admin management.
 Payment: Cash on delivery (online coming soon).`;
@@ -64,7 +64,7 @@ export const ChatWidget: React.FC = () => {
       ) : (
         <div className="w-80 h-96 bg-white border border-gray-200 rounded-xl shadow-xl flex flex-col overflow-hidden">
           <div className="p-3 border-b flex items-center justify-between">
-            <div className="font-semibold">Deshi10 Assistant</div>
+            <div className="font-semibold">DeshiBazar Assistant</div>
             <button onClick={() => setOpen(false)} className="p-1 hover:bg-gray-100 rounded-full">
               <X className="w-4 h-4" />
             </button>
