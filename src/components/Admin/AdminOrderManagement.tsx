@@ -3,7 +3,7 @@ import { Order } from '../../types';
 import { db } from '../../lib/database';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Package, Clock, CheckCircle, Truck, XCircle, MapPin } from 'lucide-react';
+import { Package, Clock, CheckCircle, Truck, XCircle, MapPin, Globe } from 'lucide-react';
 
 interface AdminOrderManagementProps {
   orders: Order[];
@@ -16,6 +16,30 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
 }) => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [trackingNumbers, setTrackingNumbers] = useState<Record<string, string>>({});
+  const [webhookStatus, setWebhookStatus] = useState<Record<string, { user: boolean; approval: boolean; delivery: boolean }>>({});
+
+  // Load webhook status from localStorage on component mount
+  React.useEffect(() => {
+    const webhookHistory: Record<string, { status: string }> = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+    const status: Record<string, { user: boolean; approval: boolean; delivery: boolean }> = {};
+    
+    Object.entries(webhookHistory).forEach(([key, value]) => {
+      if (key.includes('_delivery')) {
+        const orderId = key.replace('_delivery', '');
+        if (!status[orderId]) status[orderId] = { user: false, approval: false, delivery: false };
+        status[orderId].delivery = value.status === 'success';
+      } else if (key.includes('_user')) {
+        const orderId = key.replace('_user', '');
+        if (!status[orderId]) status[orderId] = { user: false, approval: false, delivery: false };
+        status[orderId].user = value.status === 'success';
+      } else {
+        if (!status[key]) status[key] = { user: false, approval: false, delivery: false };
+        status[key].approval = value.status === 'success';
+      }
+    });
+    
+    setWebhookStatus(status);
+  }, []);
 
   const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -45,9 +69,41 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
       }
       
       await db.updateOrderStatus(orderId, newStatus, trackingNumber, trackingStatus);
+      
+      // Track webhook status for approved orders
+      if (newStatus === 'approved') {
+        setWebhookStatus(prev => ({ 
+          ...prev, 
+          [orderId]: { 
+            ...prev[orderId], 
+            approval: true 
+          } 
+        }));
+      }
+      
       onOrderUpdate();
     } catch (error) {
       console.error('Failed to update order status:', error);
+    }
+  };
+
+  const handleExpressDelivery = async (orderId: string) => {
+    try {
+      const rider = { id: 'rider-1', name: 'QuickRider', phone: '+8801XXXXXXXXX' };
+      await db.startExpressDelivery(orderId, rider, 10);
+      
+      // Track delivery webhook status
+      setWebhookStatus(prev => ({ 
+        ...prev, 
+        [orderId]: { 
+          ...prev[orderId], 
+          delivery: true 
+        } 
+      }));
+      
+      onOrderUpdate();
+    } catch (error) {
+      console.error('Failed to start express delivery:', error);
     }
   };
 
@@ -137,6 +193,31 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
                 }`}>
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </span>
+                
+                {/* User Webhook Status Indicator */}
+                {webhookStatus[order.id]?.user && (
+                  <div className="flex items-center justify-center mt-2 px-2 py-1 bg-purple-50 border border-purple-200 rounded-full">
+                    <Globe className="w-3 h-3 text-purple-600 mr-1" />
+                    <span className="text-xs text-purple-700 font-medium">User Order Webhook Sent</span>
+                  </div>
+                )}
+                
+                {/* Approval Webhook Status Indicator */}
+                {order.status === 'approved' && webhookStatus[order.id]?.approval && (
+                  <div className="flex items-center justify-center mt-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full">
+                    <Globe className="w-3 h-3 text-blue-600 mr-1" />
+                    <span className="text-xs text-blue-700 font-medium">Approval Webhook Sent</span>
+                  </div>
+                )}
+                
+                {/* Delivery Webhook Status Indicator */}
+                {webhookStatus[order.id]?.delivery && (
+                  <div className="flex items-center justify-center mt-1 px-2 py-1 bg-green-50 border border-green-200 rounded-full">
+                    <Globe className="w-3 h-3 text-green-600 mr-1" />
+                    <span className="text-xs text-green-700 font-medium">Delivery Webhook Sent</span>
+                  </div>
+                )}
+                
                 <p className="text-lg font-semibold text-gray-900 mt-1">
                   ৳{order.total.toFixed(2)}
                 </p>
@@ -218,20 +299,42 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
 
               {order.status === 'approved' && (
                 <>
-                  <Button
-                    size="sm"
-                    onClick={() => handleStatusUpdate(order.id, 'processing')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Start Processing
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => handleStatusUpdate(order.id, 'cancelled')}
-                  >
-                    Cancel Order
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      onClick={() => handleStatusUpdate(order.id, 'processing')}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Start Processing
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleStatusUpdate(order.id, 'cancelled')}
+                    >
+                      Cancel Order
+                    </Button>
+                    {webhookStatus[order.id]?.user && (
+                      <div className="flex items-center px-3 py-1 bg-purple-50 border border-purple-200 rounded-lg">
+                        <Globe className="w-4 h-4 text-purple-600 mr-2" />
+                        <span className="text-sm text-purple-700 font-medium">User Order Webhook Sent</span>
+                      </div>
+                    )}
+                    
+                    {webhookStatus[order.id]?.approval && (
+                      <div className="flex items-center px-3 py-1 bg-green-50 border border-green-200 rounded-lg">
+                        <Globe className="w-4 h-4 text-green-600 mr-2" />
+                        <span className="text-sm text-green-700 font-medium">Approval Webhook Sent</span>
+                      </div>
+                    )}
+                    
+                    {webhookStatus[order.id]?.delivery && (
+                      <div className="flex items-center px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+                        <Globe className="w-4 h-4 text-blue-600 mr-2" />
+                        <span className="text-sm text-blue-700 font-medium">Delivery Webhook Sent</span>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -247,11 +350,7 @@ export const AdminOrderManagement: React.FC<AdminOrderManagementProps> = ({
                   </Button>
                   <Button
                     size="sm"
-                    onClick={async () => {
-                      const rider = { id: 'rider-1', name: 'QuickRider', phone: '+8801XXXXXXXXX' };
-                      await db.startExpressDelivery(order.id, rider, 10);
-                      onOrderUpdate();
-                    }}
+                    onClick={() => handleExpressDelivery(order.id)}
                     className="bg-green-600 hover:bg-green-700"
                   >
                     Start 10-min Delivery

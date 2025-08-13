@@ -80,7 +80,14 @@ export const AdminDashboard: React.FC = () => {
     totalProducts: products.length,
     totalOrders: orders.length,
     pendingOrders: orders.filter(o => o.status === 'pending').length,
-    totalRevenue: orders.reduce((sum, order) => sum + order.total, 0)
+    totalRevenue: orders.reduce((sum, order) => sum + order.total, 0),
+    webhookStats: (() => {
+      const webhookHistory: Record<string, { status: string }> = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+      const totalWebhooks = Object.keys(webhookHistory).length;
+      const successfulWebhooks = Object.values(webhookHistory).filter(w => w.status === 'success').length;
+      const failedWebhooks = totalWebhooks - successfulWebhooks;
+      return { total: totalWebhooks, successful: successfulWebhooks, failed: failedWebhooks };
+    })()
   };
 
   const tabs = [
@@ -105,7 +112,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
             <Package className="w-8 h-8 text-blue-600" />
@@ -141,7 +148,28 @@ export const AdminDashboard: React.FC = () => {
             <TrendingUp className="w-8 h-8 text-purple-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">${stats.totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-semibold text-gray-900">৳{stats.totalRevenue.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center">
+            <div className="w-8 h-8 text-indigo-600 flex items-center justify-center">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Webhook Status</p>
+              <div className="flex items-center space-x-2">
+                <span className="text-lg font-semibold text-gray-900">{stats.webhookStats.successful}</span>
+                <span className="text-sm text-gray-500">/</span>
+                <span className="text-sm text-gray-500">{stats.webhookStats.total}</span>
+              </div>
+              {stats.webhookStats.failed > 0 && (
+                <p className="text-xs text-red-600 mt-1">{stats.webhookStats.failed} failed</p>
+              )}
             </div>
           </div>
         </div>

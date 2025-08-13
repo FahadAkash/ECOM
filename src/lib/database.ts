@@ -298,7 +298,7 @@ class DatabaseManager {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       storeLocation: this.getDefaultStoreLocation(),
-      destinationLocation: this.deriveDestinationFromAddress(orderData.shippingAddress),
+              destinationLocation: this.deriveDestinationFromAddress(),
       currentLocation: undefined,
       promisedDeliveryAt: undefined,
       rider: undefined,
@@ -306,6 +306,10 @@ class DatabaseManager {
     } as Order;
     orders.push(newOrder);
     localStorage.setItem('deshideal_orders', JSON.stringify(orders));
+    
+    // Send webhook for user order placement
+    this.sendUserOrderWebhook(newOrder);
+    
     this.notifyOrder(newOrder.id, newOrder);
     return newOrder;
   }
@@ -319,10 +323,235 @@ class DatabaseManager {
     return JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
   }
 
+  private async sendUserOrderWebhook(order: Order): Promise<void> {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    const attemptWebhook = async (): Promise<void> => {
+      try {
+        const webhookData = {
+          orderId: order.id,
+          quantity: order.items.reduce((total, item) => total + item.quantity, 0),
+          price: `${order.total}$`,
+          Role: "User"
+        };
+
+        console.log('Sending webhook for user order placement:', webhookData);
+
+        const response = await fetch('https://ecomwebsite.app.n8n.cloud/webhook/headers-pricing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        console.log('✅ User order webhook sent successfully for order:', order.id);
+        
+        // Store webhook success in localStorage for persistence
+        const webhookHistory = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+        const webhookKey = `${order.id}_user`;
+        webhookHistory[webhookKey] = {
+          sentAt: new Date().toISOString(),
+          status: 'success',
+          type: 'user_order',
+          data: webhookData
+        };
+        localStorage.setItem('deshideal_webhook_history', JSON.stringify(webhookHistory));
+        
+      } catch (error) {
+        console.error(`❌ User order webhook attempt ${retryCount + 1} failed for order ${order.id}:`, error);
+        
+        if (retryCount < maxRetries - 1) {
+          retryCount++;
+          console.log(`🔄 Retrying user order webhook for order ${order.id} (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptWebhook();
+        } else {
+          console.error(`❌ All user order webhook attempts failed for order ${order.id}`);
+          
+          // Store webhook failure in localStorage
+          const webhookHistory = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+          const webhookKey = `${order.id}_user`;
+          webhookHistory[webhookKey] = {
+            sentAt: new Date().toISOString(),
+            status: 'failed',
+            type: 'user_order',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            data: {
+              orderId: order.id,
+              quantity: order.items.reduce((total, item) => total + item.quantity, 0),
+              price: `${order.total}$`,
+              Role: "User"
+            }
+          };
+          localStorage.setItem('deshideal_webhook_history', JSON.stringify(webhookHistory));
+        }
+      }
+    };
+
+    await attemptWebhook();
+  }
+
+  private async sendApprovalWebhook(order: Order): Promise<void> {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    const attemptWebhook = async (): Promise<void> => {
+      try {
+        const webhookData = {
+          orderId: order.id,
+          quantity: order.items.reduce((total, item) => total + item.quantity, 0),
+          price: `${order.total}$`,
+          Role: "Admin"
+        };
+
+        console.log('Sending webhook for order approval:', webhookData);
+
+        const response = await fetch('https://ecomwebsite.app.n8n.cloud/webhook/headers-pricing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        console.log('✅ Webhook sent successfully for order:', order.id);
+        
+        // Store webhook success in localStorage for persistence
+        const webhookHistory = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+        webhookHistory[order.id] = {
+          sentAt: new Date().toISOString(),
+          status: 'success',
+          data: webhookData
+        };
+        localStorage.setItem('deshideal_webhook_history', JSON.stringify(webhookHistory));
+        
+      } catch (error) {
+        console.error(`❌ Webhook attempt ${retryCount + 1} failed for order ${order.id}:`, error);
+        
+        if (retryCount < maxRetries - 1) {
+          retryCount++;
+          console.log(`🔄 Retrying webhook for order ${order.id} (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptWebhook();
+        } else {
+          console.error(`❌ All webhook attempts failed for order ${order.id}`);
+          
+          // Store webhook failure in localStorage
+          const webhookHistory = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+          webhookHistory[order.id] = {
+            sentAt: new Date().toISOString(),
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            data: {
+              orderId: order.id,
+              quantity: order.items.reduce((total, item) => total + item.quantity, 0),
+              price: `${order.total}$`,
+              Role: "Admin"
+            }
+          };
+          localStorage.setItem('deshideal_webhook_history', JSON.stringify(webhookHistory));
+        }
+      }
+    };
+
+    await attemptWebhook();
+  }
+
+  private async sendDeliveryWebhook(order: Order): Promise<void> {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    const attemptWebhook = async (): Promise<void> => {
+      try {
+        const webhookData = {
+          orderId: order.id,
+          quantity: order.items.reduce((total, item) => total + item.quantity, 0),
+          price: `${order.total}$`,
+          Role: "Admin"
+        };
+
+        console.log('Sending webhook for delivery start:', webhookData);
+
+        const response = await fetch('https://ecomwebsite.app.n8n.cloud/webhook/headers-pricing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        console.log('✅ Delivery webhook sent successfully for order:', order.id);
+        
+        // Store webhook success in localStorage for persistence
+        const webhookHistory = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+        const webhookKey = `${order.id}_delivery`;
+        webhookHistory[webhookKey] = {
+          sentAt: new Date().toISOString(),
+          status: 'success',
+          type: 'delivery',
+          data: webhookData
+        };
+        localStorage.setItem('deshideal_webhook_history', JSON.stringify(webhookHistory));
+        
+      } catch (error) {
+        console.error(`❌ Delivery webhook attempt ${retryCount + 1} failed for order ${order.id}:`, error);
+        
+        if (retryCount < maxRetries - 1) {
+          retryCount++;
+          console.log(`🔄 Retrying delivery webhook for order ${order.id} (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptWebhook();
+        } else {
+          console.error(`❌ All delivery webhook attempts failed for order ${order.id}`);
+          
+          // Store webhook failure in localStorage
+          const webhookHistory = JSON.parse(localStorage.getItem('deshideal_webhook_history') || '{}');
+          const webhookKey = `${order.id}_delivery`;
+          webhookHistory[webhookKey] = {
+            sentAt: new Date().toISOString(),
+            status: 'failed',
+            type: 'delivery',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            data: {
+              orderId: order.id,
+              quantity: order.items.reduce((total, item) => total + item.quantity, 0),
+              price: `${order.total}$`,
+              Role: "Admin"
+            }
+          };
+          localStorage.setItem('deshideal_webhook_history', JSON.stringify(webhookHistory));
+        }
+      }
+    };
+
+    await attemptWebhook();
+  }
+
   async updateOrderStatus(orderId: string, status: Order['status'], trackingNumber?: string, trackingStatus?: string): Promise<Order | null> {
     const orders = JSON.parse(localStorage.getItem('deshideal_orders') || '[]');
     const index = orders.findIndex((order: Order) => order.id === orderId);
     if (index !== -1) {
+      const previousStatus = orders[index].status;
       orders[index].status = status;
       orders[index].updatedAt = new Date().toISOString();
       
@@ -332,21 +561,27 @@ class DatabaseManager {
       
       if (trackingStatus) {
         orders[index].trackingStatus = trackingStatus;
-      } else {
-        const statusMap = {
-          'pending': 'Order Placed',
-          'approved': 'Order Confirmed',
-          'processing': 'Preparing for Shipment',
-          'out_for_delivery': 'Rider is on the way',
-          'shipped': 'In Transit',
-          'delivered': 'Delivered',
-          'cancelled': 'Cancelled'
-        };
-        orders[index].trackingStatus = (statusMap as any)[status];
-      }
+              } else {
+          const statusMap: Record<Order['status'], string> = {
+            'pending': 'Order Placed',
+            'approved': 'Order Confirmed',
+            'processing': 'Preparing for Shipment',
+            'out_for_delivery': 'Rider is on the way',
+            'shipped': 'In Transit',
+            'delivered': 'Delivered',
+            'cancelled': 'Cancelled'
+          };
+          orders[index].trackingStatus = statusMap[status];
+        }
       
       localStorage.setItem('deshideal_orders', JSON.stringify(orders));
       const updated: Order = orders[index];
+      
+      // Send webhook when order is approved (status changes to approved)
+      if (status === 'approved' && previousStatus !== 'approved') {
+        this.sendApprovalWebhook(updated);
+      }
+      
       // Stop simulator once delivered/cancelled
       if (status === 'delivered' || status === 'cancelled') {
         const timerId = this.movementTimers.get(orderId);
@@ -375,7 +610,7 @@ class DatabaseManager {
     const promisedAt = new Date(now + promisedMinutes * 60_000).toISOString();
     const order: Order = orders[index];
     const store = order.storeLocation ?? this.getDefaultStoreLocation();
-    const destination = order.destinationLocation ?? this.deriveDestinationFromAddress(order.shippingAddress);
+    const destination = order.destinationLocation ?? this.deriveDestinationFromAddress();
     const currentLocation = { ...store, updatedAt: new Date().toISOString() } as Order['currentLocation'];
 
     const updated: Order = {
@@ -393,6 +628,9 @@ class DatabaseManager {
     localStorage.setItem('deshideal_orders', JSON.stringify(orders));
     this.notifyOrder(orderId, updated);
 
+    // Send webhook for delivery start
+    this.sendDeliveryWebhook(updated);
+    
     // Start movement simulator
     this.startMovementSimulation(updated);
     return updated;
@@ -486,7 +724,7 @@ class DatabaseManager {
     return { lat: 23.7808875, lng: 90.2792371 };
   }
 
-  private deriveDestinationFromAddress(_address: string): GeoPoint {
+  private deriveDestinationFromAddress(): GeoPoint {
     // Simple stub: randomize within ~3km of store to simulate different destinations
     const base = this.getDefaultStoreLocation();
     const rand = (min: number, max: number) => Math.random() * (max - min) + min;
